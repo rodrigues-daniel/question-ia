@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16
+    # Alterado para a imagem que contém a extensão 'vector' necessária para o nomic-embed-text
+    image: pgvector/pgvector:pg16
     container_name: postgres16
     restart: always
 
