@@ -1,5 +1,6 @@
 package br.com.cebraspe.simulados.repository;
 
+import br.com.cebraspe.simulados.domain.AnaliseEstudoInput;
 import br.com.cebraspe.simulados.domain.Questao;
 import br.com.cebraspe.simulados.domain.QuestaoCompleta;
 import br.com.cebraspe.simulados.domain.QuestaoInput;
@@ -21,6 +22,20 @@ public class QuestaoRepository {
 
     public UUID inserir(QuestaoInput input) {
         UUID id = UUID.randomUUID();
+
+        // Extrai dados do bloco analise_estudo
+        String mnemonicoInicial = null;
+        int errosIniciais = 0;
+        int grauInicial = 0;
+
+        if (input.analiseEstudo() != null) {
+            AnaliseEstudoInput ae = input.analiseEstudo();
+            mnemonicoInicial = ae.meuMnemonicoPersonal();
+            errosIniciais = ae.errosRecorrentes() != null ? ae.errosRecorrentes() : 0;
+            grauInicial = ae.meuGrauCerteza() != null ? ae.meuGrauCerteza() : 0;
+        }
+
+        // 1. Insere a questão principal
         jdbc.sql("""
                 INSERT INTO questoes (
                     id, enunciado, gabarito, assunto, banca, ano, cargo,
@@ -34,17 +49,45 @@ public class QuestaoRepository {
                 """)
                 .param("id", id)
                 .param("enunciado", input.enunciado())
-                .param("gabarito", input.gabarito())
+                .param("gabarito", input.gabaritoBoolean()) // Boolean limpo
                 .param("assunto", input.assunto())
                 .param("banca", input.banca())
                 .param("ano", input.ano())
                 .param("cargo", input.cargo())
-                .param("pegadinha", input.pegadinha())
+                .param("pegadinha", input.pegadinha()) // String | null
                 .param("tipoPegadinha", input.tipoPegadinha())
                 .param("palavrasAlerta", converterParaArray(input.palavrasAlerta()))
                 .param("detalhePegadinha", input.detalhePegadinha())
                 .param("referenciaLegal", input.referenciaLegal())
                 .update();
+
+        // 2. Pré-popula analise_estudo se o payload trouxer dados
+        if (input.analiseEstudo() != null
+                && (mnemonicoInicial != null || errosIniciais > 0 || grauInicial > 0)) {
+
+            jdbc.sql("""
+                    INSERT INTO analise_estudo (
+                        id, questao_id, session_id,
+                        tentativas, acertos, erros_recorrentes,
+                        grau_certeza, mnemonico_pessoal,
+                        data_proxima_revisao, intervalo_atual_horas, streak_acertos
+                    ) VALUES (
+                        :id, :questaoId, 'default',
+                        :tentativas, 0, :erros,
+                        :grau, :mnemonico,
+                        NOW(), 24, 0
+                    )
+                    ON CONFLICT (questao_id, session_id) DO NOTHING
+                    """)
+                    .param("id", UUID.randomUUID())
+                    .param("questaoId", id)
+                    .param("tentativas", input.analiseEstudo().tentativasAnteriores())
+                    .param("erros", errosIniciais)
+                    .param("grau", grauInicial)
+                    .param("mnemonico", mnemonicoInicial)
+                    .update();
+        }
+
         return id;
     }
 
