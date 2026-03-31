@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: cebraspe-simulados
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cebraspe_simulados}
+    username: ${DB_USERNAME:cebraspe}
+    password: ${DB_PASSWORD:cebraspe123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_MODEL:llama3.2}
+        options:
+          temperature: ${OLLAMA_TEMPERATURE:0.7}
+          num-ctx: 4096
+          top-p: 0.9
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+app:
+  estudo:
+    # Intervalo base em horas para revisão espaçada
+    intervalo-base-horas: ${ESTUDO_INTERVALO_BASE:24}
+    # Multiplicador por acerto consecutivo (fator SM-2 simplificado)
+    fator-acerto: ${ESTUDO_FATOR_ACERTO:2.5}
+    # Penalidade ao errar (reduz intervalo)
+    fator-erro: ${ESTUDO_FATOR_ERRO:0.5}
+    # Limite de erros recorrentes para prioridade máxima
+    limite-erros-recorrentes: ${ESTUDO_LIMITE_ERROS:3}
+
+logging:
+  level:
+    br.com.cebraspe: ${LOG_LEVEL:DEBUG}
+    org.springframework.ai: INFO
+    org.springframework.jdbc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

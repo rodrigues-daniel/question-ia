@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres16
+    restart: always
+
+    environment:
+      POSTGRES_DB: cebraspe_simulados
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+  pgdata:
