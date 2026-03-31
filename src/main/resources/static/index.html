@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulados Cebraspe — Estudo</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="logo">⚖️</div>
+                <div>
+                    <div>Cebraspe Simulados</div>
+                    <div style="font-size:.7rem;font-weight:400;opacity:.7">Sistema de Revisão Inteligente</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle">🌙 Escuro</button>
+                <a href="admin.html" class="btn btn-outline btn-sm"
+                    style="color:#fff;border-color:rgba(255,255,255,.3)">⚙️ Admin</a>
+            </div>
+        </header>
+
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="sidebar-label">Estudo</div>
+            <div class="sidebar-section">
+                <a class="nav-item active" data-section="painel" onclick="showSection('painel')">
+                    <span class="icon">📊</span> Painel
+                </a>
+                <a class="nav-item" data-section="questoes" onclick="showSection('questoes')">
+                    <span class="icon">📝</span> Questões
+                </a>
+                <a class="nav-item" data-section="criticas" onclick="showSection('criticas')">
+                    <span class="icon">⚠️</span> Críticas
+                    <span id="badge-criticas" class="badge badge-critico" style="margin-left:auto;display:none"></span>
+                </a>
+            </div>
+            <div class="sidebar-label">Inteligência Artificial</div>
+            <div class="sidebar-section">
+                <a class="nav-item" data-section="ia-gerar" onclick="showSection('ia-gerar')">
+                    <span class="icon">🤖</span> Gerar Questões
+                </a>
+                <a class="nav-item" data-section="ia-analise" onclick="showSection('ia-analise')">
+                    <span class="icon">🧠</span> Análise de Desempenho
+                </a>
+            </div>
+        </nav>
+
+        <!-- MAIN -->
+        <main class="main-content">
+
+            <!-- ======== PAINEL ======== -->
+            <section id="sec-painel" class="section active">
+                <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px">
+                    📊 Painel de Desempenho
+                </h2>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card loading">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Total de Questões</div>
+                    </div>
+                    <div class="stat-card loading">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Estudadas</div>
+                    </div>
+                    <div class="stat-card loading success">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Acertos</div>
+                    </div>
+                    <div class="stat-card loading warn">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Revisões Pendentes</div>
+                    </div>
+                    <div class="stat-card loading danger">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Questões Críticas</div>
+                    </div>
+                    <div class="stat-card loading">
+                        <div class="stat-value">—</div>
+                        <div class="stat-label">Grau de Certeza</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🚀 Iniciar Sessão de Estudo</span>
+                    </div>
+                    <p class="text-sm text-muted" style="margin-bottom:16px">
+                        O sistema prioriza automaticamente questões com revisão vencida
+                        e alto índice de erros recorrentes.
+                    </p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <button class="btn btn-primary btn-lg" onclick="showSection('questoes')">
+                            📝 Estudar Agora
+                        </button>
+                        <button class="btn btn-outline" onclick="showSection('criticas')">
+                            ⚠️ Ver Críticas
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======== QUESTÕES ======== -->
+            <section id="sec-questoes" class="section">
+                <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px">
+                    📝 Questões de Revisão
+                </h2>
+
+                <!-- Filtros -->
+                <div class="filtros-bar">
+                    <label class="text-sm text-muted">Assunto:</label>
+                    <select id="filtroAssunto" class="input-field" onchange="carregarQuestoes()">
+                        <option value="">Todos os assuntos</option>
+                    </select>
+                    <label class="text-sm text-muted">Limite:</label>
+                    <select id="filtroLimite" class="input-field" onchange="carregarQuestoes()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <label class="flex items-center gap-2 text-sm" style="cursor:pointer">
+                        <input type="checkbox" id="filtroVencidas" onchange="carregarQuestoes()" />
+                        Apenas vencidas
+                    </label>
+                    <button class="btn btn-outline btn-sm" onclick="carregarQuestoes()">
+                        🔄 Atualizar
+                    </button>
+                </div>
+
+                <div id="questoesContainer">
+                    <p class="text-muted" style="text-align:center;padding:40px">
+                        Carregando questões...
+                    </p>
+                </div>
+            </section>
+
+            <!-- ======== CRÍTICAS ======== -->
+            <section id="sec-criticas" class="section">
+                <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px">
+                    ⚠️ Questões Críticas
+                    <span class="badge badge-critico" style="vertical-align:middle;font-size:.8rem">
+                        Alta recorrência de erros
+                    </span>
+                </h2>
+                <p class="text-sm text-muted" style="margin-bottom:16px">
+                    Questões com 2 ou mais erros recorrentes. Revise com atenção especial.
+                </p>
+                <div id="criticasContainer">
+                    <p class="text-muted" style="text-align:center;padding:40px">Carregando...</p>
+                </div>
+            </section>
+
+            <!-- ======== IA: GERAR ======== -->
+            <section id="sec-ia-gerar" class="section">
+                <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px">
+                    🤖 Gerar Questões com IA
+                </h2>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🧬 Gerador RAG</span>
+                        <span class="badge badge-ia">Ollama + LLaMA</span>
+                    </div>
+                    <p class="text-sm text-muted" style="margin-bottom:16px">
+                        A IA usa as questões do banco como contexto (RAG) para gerar
+                        novas questões no estilo CEBRASPE.
+                    </p>
+                    <div style="display:grid;gap:12px;max-width:400px">
+                        <div>
+                            <label class="text-sm text-bold">Assunto</label>
+                            <select id="iaAssunto" class="input-field" style="width:100%;margin-top:6px">
+                                <option value="Direito Administrativo">Direito Administrativo</option>
+                                <option value="Direito Constitucional">Direito Constitucional</option>
+                                <option value="Direito Penal">Direito Penal</option>
+                                <option value="Administração Pública">Administração Pública</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-bold">Quantidade</label>
+                            <input type="number" id="iaQtd" class="input-field" style="width:100%;margin-top:6px"
+                                value="3" min="1" max="10" />
+                        </div>
+                        <button class="btn btn-primary" id="btnGerarIa" onclick="gerarQuestoesIa()">
+                            🤖 Gerar com IA
+                        </button>
+                    </div>
+                    <div id="iaResultado" style="display:none;margin-top:20px">
+                        <div class="divider"></div>
+                        <div class="card-title" style="margin-bottom:12px">Resultado:</div>
+                        <pre id="iaTextoResultado" style="white-space:pre-wrap;font-family:var(--font);font-size:.875rem;
+                      line-height:1.7;color:var(--text-primary)"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======== IA: ANÁLISE ======== -->
+            <section id="sec-ia-analise" class="section">
+                <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px">
+                    🧠 Análise de Desempenho com IA
+                </h2>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📈 Relatório Personalizado</span>
+                    </div>
+                    <div style="display:grid;gap:12px;max-width:400px;margin-bottom:16px">
+                        <div>
+                            <label class="text-sm text-bold">Assunto mais difícil</label>
+                            <input type="text" id="assuntoFraco" class="input-field" style="width:100%;margin-top:6px"
+                                placeholder="Ex: Direito Administrativo" />
+                        </div>
+                        <button class="btn btn-primary" onclick="analisarDesempenho()">
+                            🔍 Analisar Desempenho
+                        </button>
+                    </div>
+                    <div id="analiseResultado" style="display:none">
+                        <div class="divider"></div>
+                        <pre id="analiseTexto" style="white-space:pre-wrap;font-family:var(--font);font-size:.875rem;
+                      line-height:1.7;color:var(--text-primary)"></pre>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
