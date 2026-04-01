@@ -814,3 +814,54 @@ select.input-field {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+
+/* Badge de tópico */
+.badge-topico {
+    background: #ede9fe;
+    color: #4c1d95;
+}
+
+[data-theme="dark"] .badge-topico {
+    background: #2e1065;
+    color: #c4b5fd;
+}
+
+/* Card já respondido na rodada (sutil) */
+.questao-card.ja-respondida {
+    opacity: .75;
+    border-color: var(--border);
+}
+
+.questao-card.ja-respondida:hover {
+    opacity: 1;
+}
+
+/* Labels dos checkboxes de filtro */
+.filtro-check-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.filtro-check-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+}
+
+.filtro-check-label:hover {
+    color: var(--text-primary);
+}
+
+/* Select de tópico desabilitado */
+select:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
