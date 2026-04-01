@@ -488,16 +488,19 @@ function renderizarModoLista(container, visíveis) {
 function renderizarQuestaoCard(q, index, prefixo = 'q') {
     const cardId = `${prefixo}-${index}`;
 
+    // ── Badge de origem ──
     const origemBadge = q.geradaPorIa
         ? `<span class="badge badge-ia" title="Gerada pela IA interna">🤖 IA Interna</span>`
         : `<span class="badge badge-origem-manual" title="Inserida manualmente">✍️ Manual</span>`;
 
+    // ── Badge de erros ──
     const errosBadge = q.errosRecorrentes >= 3
         ? `<span class="badge badge-critico">⚠️ ${q.errosRecorrentes} erros</span>`
         : q.errosRecorrentes > 0
             ? `<span class="badge badge-alerta">⚠️ ${q.errosRecorrentes} erro(s)</span>`
             : '';
 
+    // ── Badge de respondida na rodada ──
     const jaRespondida = respondidosNaRodada.has(q.id);
     const respondidaBadge = jaRespondida
         ? `<span class="badge" style="background:#dcfce7;color:#166534">✔ Respondida</span>`
@@ -509,6 +512,7 @@ function renderizarQuestaoCard(q, index, prefixo = 'q') {
            </span>`
         : `<span class="badge" style="background:var(--bg-primary)">🆕 Nunca respondida</span>`;
 
+    // ── Mnemônico pessoal (salvo no banco) ──
     const mnemonico = q.mnemonicoPersonal ? `
         <div class="mnemonico-box" style="margin-top:8px">
             <div class="feedback-section-label">💡 Mnemônico pessoal</div>
@@ -517,11 +521,36 @@ function renderizarQuestaoCard(q, index, prefixo = 'q') {
             </div>
         </div>` : '';
 
+    // ── Detalhe da Pegadinha (visível desde o início no card) ──
+    const detalhePegadinha = q.detalhePegadinha ? `
+        <div class="info-box info-box-alerta" style="margin-top:10px">
+            <div class="info-box-label">🪤 ${q.tipoPegadinha
+            ? escapeHtml(q.tipoPegadinha)
+            : 'Pegadinha'}</div>
+            <p class="text-sm">${escapeHtml(q.detalhePegadinha)}</p>
+        </div>` : '';
+
+    // ── Comentário do Professor (visível desde o início no card) ──
+    const comentarioProfessor = q.comentarioProfessor ? `
+        <div class="info-box info-box-professor" style="margin-top:10px">
+            <div class="info-box-label">👨‍🏫 Comentário do Professor</div>
+            <p class="text-sm">${escapeHtml(q.comentarioProfessor)}</p>
+        </div>` : '';
+
+    // ── Palavras-alerta (badges antes de responder) ──
+    const palavrasAlertaBadges = q.palavrasAlerta?.length ? `
+        <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            <span class="feedback-section-label">⚠️ Palavras-alerta:</span>
+            ${q.palavrasAlerta.map(p =>
+        `<span class="badge badge-alerta">${escapeHtml(p)}</span>`
+    ).join('')}
+        </div>` : '';
+
     return `
         <div class="questao-card ${jaRespondida ? 'ja-respondida' : ''}"
              id="card-${cardId}">
 
-            <!-- Meta -->
+            <!-- ── Meta: assunto + tópico + origem + erros + status ── -->
             <div class="questao-meta" style="margin-bottom:12px;flex-wrap:wrap;gap:6px">
                 <span class="badge badge-assunto">📚 ${escapeHtml(q.assunto)}</span>
                 ${q.topico
@@ -535,14 +564,33 @@ function renderizarQuestaoCard(q, index, prefixo = 'q') {
                 ${metaInfo}
             </div>
 
-            <!-- Enunciado -->
+            <!-- ── Referência Legal ── -->
+            ${q.referenciaLegal ? `
+                <div style="margin-bottom:8px">
+                    <span class="badge"
+                          style="background:var(--bg-primary);color:var(--text-secondary)">
+                        ⚖️ ${escapeHtml(q.referenciaLegal)}
+                    </span>
+                </div>` : ''}
+
+            <!-- ── Enunciado ── -->
             <div class="questao-enunciado" id="enunciado-${cardId}">
                 ${escapeHtml(q.enunciado)}
             </div>
 
+            <!-- ── Palavras-alerta ── -->
+            ${palavrasAlertaBadges}
+
+            <!-- ── Detalhes visíveis antes de responder ── -->
+            <div id="detalhes-pre-${cardId}">
+                ${detalhePegadinha}
+                ${comentarioProfessor}
+            </div>
+
+            <!-- ── Mnemônico pessoal ── -->
             ${mnemonico}
 
-            <!-- Grau de certeza -->
+            <!-- ── Grau de certeza ── -->
             <div style="margin:14px 0 10px">
                 <span class="text-xs text-muted">Grau de certeza:</span>
                 <div class="grau-certeza" id="grau-${cardId}" data-grau="3">
@@ -554,7 +602,7 @@ function renderizarQuestaoCard(q, index, prefixo = 'q') {
                 </div>
             </div>
 
-            <!-- Botões de resposta -->
+            <!-- ── Botões de resposta ── -->
             <div class="resposta-btns" id="btns-${cardId}">
                 <button class="btn btn-success"
                         onclick="responder('${cardId}', ${index}, true)">
@@ -566,10 +614,10 @@ function renderizarQuestaoCard(q, index, prefixo = 'q') {
                 </button>
             </div>
 
-            <!-- Feedback -->
+            <!-- ── Feedback (preenchido após responder) ── -->
             <div class="feedback-box" id="feedback-${cardId}"></div>
 
-            <!-- Editor de mnemônico -->
+            <!-- ── Editor de mnemônico (aparece ao errar) ── -->
             <div id="mnemonico-edit-${cardId}" style="display:none">
                 <div class="divider"></div>
                 <div class="mnemonico-box">
