@@ -865,3 +865,49 @@ select:disabled {
     opacity: .45;
     cursor: not-allowed;
 }
+
+
+/* ── Info boxes: detalhe pegadinha + comentário professor ── */
+.info-box {
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    border-left: 4px solid transparent;
+}
+
+.info-box-label {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 6px;
+}
+
+/* Pegadinha */
+.info-box-alerta {
+    background: #fffbeb;
+    border-left-color: var(--accent-yellow);
+}
+
+.info-box-alerta .info-box-label {
+    color: var(--accent-yellow);
+}
+
+[data-theme="dark"] .info-box-alerta {
+    background: #1c1400;
+    border-left-color: #ca8a04;
+}
+
+/* Comentário do professor */
+.info-box-professor {
+    background: #f0f9ff;
+    border-left-color: var(--accent-blue);
+}
+
+.info-box-professor .info-box-label {
+    color: var(--accent-blue);
+}
+
+[data-theme="dark"] .info-box-professor {
+    background: #0c1a2e;
+    border-left-color: #3b82f6;
+}
