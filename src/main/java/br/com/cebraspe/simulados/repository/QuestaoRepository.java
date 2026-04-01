@@ -164,20 +164,31 @@ public class QuestaoRepository {
     public List<QuestaoCompleta> buscarPorErrosRecorrentes(String sessionId, int limite) {
         return jdbc.sql("""
                 SELECT
-                    q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
-                    q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
+                    q.id,
+                    q.enunciado,
+                    q.assunto,
+                    q.topico,
+                    q.gabarito,
+                    q.pegadinha,
+                    q.tipo_pegadinha,
+                    q.palavras_alerta,
+                    q.detalhe_pegadinha,
+                    q.comentario_professor,
                     q.referencia_legal,
-                    COALESCE(ae.tentativas, 0) AS tentativas,
+                    q.gerada_por_ia,
+                    COALESCE(ae.tentativas, 0)        AS tentativas,
                     COALESCE(ae.erros_recorrentes, 0) AS erros_recorrentes,
-                    COALESCE(ae.grau_certeza, 0) AS grau_certeza,
+                    COALESCE(ae.grau_certeza, 0)       AS grau_certeza,
                     ae.mnemonico_pessoal,
                     ae.data_proxima_revisao,
-                    COALESCE(ae.streak_acertos, 0) AS streak_acertos,
+                    COALESCE(ae.streak_acertos, 0)     AS streak_acertos,
                     (COALESCE(ae.erros_recorrentes, 0) * 100.0) AS score_prioridade
                 FROM questoes q
                 JOIN analise_estudo ae
-                    ON ae.questao_id = q.id AND ae.session_id = :sessionId
-                WHERE q.ativa = TRUE AND ae.erros_recorrentes >= 2
+                    ON ae.questao_id = q.id
+                    AND ae.session_id = :sessionId
+                WHERE q.ativa = TRUE
+                  AND ae.erros_recorrentes >= 2
                 ORDER BY ae.erros_recorrentes DESC
                 LIMIT :limite
                 """)
@@ -241,18 +252,37 @@ public class QuestaoRepository {
     }
 
     private QuestaoCompleta mapearQuestaoCompleta(java.sql.ResultSet rs, int row)
-            throws SQLException {
+            throws java.sql.SQLException {
+
+        // Leitura defensiva de colunas que podem ser novas no banco
+        String comentarioProfessor = null;
+        boolean geradaPorIa = false;
+        String topico = null;
+
+        try {
+            comentarioProfessor = rs.getString("comentario_professor");
+        } catch (Exception ignored) {
+        }
+        try {
+            geradaPorIa = rs.getBoolean("gerada_por_ia");
+        } catch (Exception ignored) {
+        }
+        try {
+            topico = rs.getString("topico");
+        } catch (Exception ignored) {
+        }
+
         return new QuestaoCompleta(
                 UUID.fromString(rs.getString("id")),
                 rs.getString("enunciado"),
                 rs.getString("assunto"),
-                rs.getString("topico"),
+                topico,
                 rs.getBoolean("gabarito"),
                 rs.getString("pegadinha"),
                 rs.getString("tipo_pegadinha"),
                 converterDeArray(rs.getArray("palavras_alerta")),
                 rs.getString("detalhe_pegadinha"),
-                rs.getString("comentario_professor"), // ← NOVO
+                comentarioProfessor,
                 rs.getString("referencia_legal"),
                 rs.getInt("tentativas"),
                 rs.getInt("erros_recorrentes"),
@@ -261,8 +291,7 @@ public class QuestaoRepository {
                 rs.getObject("data_proxima_revisao", java.time.OffsetDateTime.class),
                 rs.getInt("streak_acertos"),
                 rs.getDouble("score_prioridade"),
-                rs.getBoolean("gerada_por_ia") // ← NOVO
-        );
+                geradaPorIa);
     }
 
     private String converterParaArray(List<String> lista) {
@@ -280,14 +309,30 @@ public class QuestaoRepository {
     }
 
     public List<String> listarTopicos(String assunto) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT DISTINCT topico FROM questoes WHERE ativa = TRUE AND topico IS NOT NULL");
-        var query = jdbc.sql(
-                assunto != null && !assunto.isBlank()
-                        ? sql.append(" AND assunto ILIKE :assunto").toString()
-                        : sql.toString());
+        String sql = (assunto != null && !assunto.isBlank())
+                ? """
+                        SELECT DISTINCT topico
+                        FROM questoes
+                        WHERE ativa = TRUE
+                          AND topico IS NOT NULL
+                          AND topico <> ''
+                          AND assunto ILIKE :assunto
+                        ORDER BY topico
+                        """
+                : """
+                        SELECT DISTINCT topico
+                        FROM questoes
+                        WHERE ativa = TRUE
+                          AND topico IS NOT NULL
+                          AND topico <> ''
+                        ORDER BY topico
+                        """;
+
+        var query = jdbc.sql(sql);
+
         if (assunto != null && !assunto.isBlank())
             query = query.param("assunto", "%" + assunto + "%");
+
         return query.query(String.class).list();
     }
 
