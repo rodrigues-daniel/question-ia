@@ -116,26 +116,86 @@
                     📝 Questões de Revisão
                 </h2>
 
-                <!-- Filtros -->
-                <div class="filtros-bar">
-                    <label class="text-sm text-muted">Assunto:</label>
-                    <select id="filtroAssunto" class="input-field" onchange="carregarQuestoes()">
-                        <option value="">Todos os assuntos</option>
-                    </select>
-                    <label class="text-sm text-muted">Limite:</label>
-                    <select id="filtroLimite" class="input-field" onchange="carregarQuestoes()">
-                        <option value="5">5</option>
-                        <option value="10" selected>10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                    </select>
-                    <label class="flex items-center gap-2 text-sm" style="cursor:pointer">
-                        <input type="checkbox" id="filtroVencidas" onchange="carregarQuestoes()" />
-                        Apenas vencidas
-                    </label>
-                    <button class="btn btn-outline btn-sm" onclick="carregarQuestoes()">
-                        🔄 Atualizar
-                    </button>
+                <!-- Filtros + Toggle de modo -->
+                <div class="filtros-bar" style="flex-direction:column;align-items:stretch;gap:12px">
+
+                    <!-- Linha 1: assunto + tópico + limite -->
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+                            <label class="text-xs text-muted" style="font-weight:600">📚 Assunto</label>
+                            <select id="filtroAssunto" class="input-field" onchange="onAssuntoChange()">
+                                <option value="">Todos os assuntos</option>
+                            </select>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:4px;min-width:200px">
+                            <label class="text-xs text-muted" style="font-weight:600">📌 Tópico</label>
+                            <select id="filtroTopico" class="input-field" onchange="carregarQuestoes()" disabled>
+                                <option value="">Todos os tópicos</option>
+                            </select>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:4px;min-width:80px">
+                            <label class="text-xs text-muted" style="font-weight:600">Limite</label>
+                            <select id="filtroLimite" class="input-field" onchange="carregarQuestoes()">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+
+                        <!-- Toggle de modo (Card / Lista) -->
+                        <div style="display:flex;flex-direction:column;gap:4px;margin-left:auto">
+                            <label class="text-xs text-muted" style="font-weight:600">Visualização</label>
+                            <div style="display:flex;gap:4px;background:var(--bg-primary);
+                  border-radius:var(--radius-md);padding:4px;
+                  border:1px solid var(--border)">
+                                <button id="btnModoCard" class="btn btn-ghost btn-sm active"
+                                    onclick="aplicarModoVisualizacao('card')" title="Card único">
+                                    🃏 Card
+                                </button>
+                                <button id="btnModoLista" class="btn btn-ghost btn-sm"
+                                    onclick="aplicarModoVisualizacao('lista')" title="Lista completa">
+                                    📋 Lista
+                                </button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-outline btn-sm" style="margin-top:18px" onclick="carregarQuestoes()"
+                            title="Atualizar">
+                            🔄
+                        </button>
+                    </div>
+
+                    <!-- Linha 2: checkboxes de filtro rápido -->
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;
+              padding-top:10px;border-top:1px solid var(--border)">
+
+                        <label class="filtro-check-label">
+                            <input type="checkbox" id="filtroVencidas" onchange="carregarQuestoes()" />
+                            <span>⏰ Apenas revisões vencidas</span>
+                        </label>
+
+                        <label class="filtro-check-label">
+                            <input type="checkbox" id="filtroBanco" onchange="carregarQuestoes()"
+                                title="Busca no banco apenas questões sem tentativa" />
+                            <span>🆕 Nunca respondidas (banco)</span>
+                        </label>
+
+                        <label class="filtro-check-label">
+                            <input type="checkbox" id="filtroNaoRespondidos" onchange="onFiltroNaoRespondidosChange()"
+                                title="Oculta questões já respondidas nesta rodada" />
+                            <span>🎯 Não respondidas na rodada</span>
+                        </label>
+                    </div>
+
+                    <!-- Linha 3: barra de progresso da rodada -->
+                    <div id="contadorRodada" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;
+              padding-top:10px;border-top:1px solid var(--border)">
+                        <!-- preenchido por atualizarContadorRodada() -->
+                    </div>
+
                 </div>
 
                 <div id="questoesContainer">
