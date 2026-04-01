@@ -234,16 +234,19 @@ public class QuestaoRepository {
                 rs.getObject("atualizado_em", java.time.OffsetDateTime.class));
     }
 
-    private QuestaoCompleta mapearQuestaoCompleta(java.sql.ResultSet rs, int row) throws SQLException {
+    private QuestaoCompleta mapearQuestaoCompleta(java.sql.ResultSet rs, int row)
+            throws SQLException {
         return new QuestaoCompleta(
                 UUID.fromString(rs.getString("id")),
                 rs.getString("enunciado"),
                 rs.getString("assunto"),
+                rs.getString("topico"),
                 rs.getBoolean("gabarito"),
                 rs.getString("pegadinha"),
                 rs.getString("tipo_pegadinha"),
                 converterDeArray(rs.getArray("palavras_alerta")),
                 rs.getString("detalhe_pegadinha"),
+                rs.getString("comentario_professor"), // ← NOVO
                 rs.getString("referencia_legal"),
                 rs.getInt("tentativas"),
                 rs.getInt("erros_recorrentes"),
@@ -251,7 +254,9 @@ public class QuestaoRepository {
                 rs.getString("mnemonico_pessoal"),
                 rs.getObject("data_proxima_revisao", java.time.OffsetDateTime.class),
                 rs.getInt("streak_acertos"),
-                rs.getDouble("score_prioridade"));
+                rs.getDouble("score_prioridade"),
+                rs.getBoolean("gerada_por_ia") // ← NOVO
+        );
     }
 
     private String converterParaArray(List<String> lista) {
@@ -288,9 +293,12 @@ public class QuestaoRepository {
             boolean apenasNaoRespondidas) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
-                    q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
-                    q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
+                    q.id, q.enunciado, q.assunto, q.topico, q.gabarito,
+                    q.pegadinha, q.tipo_pegadinha, q.palavras_alerta,
+                    q.detalhe_pegadinha,
+                    q.comentario_professor,
                     q.referencia_legal,
+                    q.gerada_por_ia,
                     COALESCE(ae.tentativas, 0)          AS tentativas,
                     COALESCE(ae.erros_recorrentes, 0)   AS erros_recorrentes,
                     COALESCE(ae.grau_certeza, 0)         AS grau_certeza,
@@ -308,7 +316,7 @@ public class QuestaoRepository {
                 LEFT JOIN analise_estudo ae
                     ON ae.questao_id = q.id AND ae.session_id = :sessionId
                 WHERE q.ativa = TRUE
-                """);
+                                """);
 
         if (assunto != null && !assunto.isBlank())
             sql.append(" AND q.assunto ILIKE :assunto");
