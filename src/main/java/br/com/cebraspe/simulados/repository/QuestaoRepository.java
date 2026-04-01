@@ -100,50 +100,53 @@ public class QuestaoRepository {
 
     public List<QuestaoCompleta> buscarParaEstudo(String sessionId, String assunto,
             int limite, boolean apenasVencidas) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
-                    q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
-                    q.referencia_legal,
-                    COALESCE(ae.tentativas, 0) AS tentativas,
-                    COALESCE(ae.erros_recorrentes, 0) AS erros_recorrentes,
-                    COALESCE(ae.grau_certeza, 0) AS grau_certeza,
-                    ae.mnemonico_pessoal,
-                    ae.data_proxima_revisao,
-                    COALESCE(ae.streak_acertos, 0) AS streak_acertos,
-                    CASE
-                        WHEN ae.id IS NULL THEN 1000.0
-                        WHEN ae.data_proxima_revisao <= NOW() THEN
-                            500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
-                        ELSE
-                            EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
-                    END AS score_prioridade
-                FROM questoes q
-                LEFT JOIN analise_estudo ae
-                    ON ae.questao_id = q.id AND ae.session_id = :sessionId
-                WHERE q.ativa = TRUE
-                """);
 
-        if (assunto != null && !assunto.isBlank()) {
-            sql.append(" AND q.assunto ILIKE :assunto ");
-        }
-        if (apenasVencidas) {
-            sql.append("""
-                    AND (ae.id IS NULL OR ae.data_proxima_revisao <= NOW()
-                         OR ae.erros_recorrentes >= 3)
-                    """);
-        }
-        sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
+        return buscarParaEstudo(sessionId, assunto, null, limite, apenasVencidas, false);
 
-        var query = jdbc.sql(sql.toString())
-                .param("sessionId", sessionId)
-                .param("limite", limite);
+        // StringBuilder sql = new StringBuilder("""
+        // SELECT
+        // q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
+        // q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
+        // q.referencia_legal,
+        // COALESCE(ae.tentativas, 0) AS tentativas,
+        // COALESCE(ae.erros_recorrentes, 0) AS erros_recorrentes,
+        // COALESCE(ae.grau_certeza, 0) AS grau_certeza,
+        // ae.mnemonico_pessoal,
+        // ae.data_proxima_revisao,
+        // COALESCE(ae.streak_acertos, 0) AS streak_acertos,
+        // CASE
+        // WHEN ae.id IS NULL THEN 1000.0
+        // WHEN ae.data_proxima_revisao <= NOW() THEN
+        // 500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
+        // ELSE
+        // EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
+        // END AS score_prioridade
+        // FROM questoes q
+        // LEFT JOIN analise_estudo ae
+        // ON ae.questao_id = q.id AND ae.session_id = :sessionId
+        // WHERE q.ativa = TRUE
+        // """);
 
-        if (assunto != null && !assunto.isBlank()) {
-            query = query.param("assunto", "%" + assunto + "%");
-        }
+        // if (assunto != null && !assunto.isBlank()) {
+        // sql.append(" AND q.assunto ILIKE :assunto ");
+        // }
+        // if (apenasVencidas) {
+        // sql.append("""
+        // AND (ae.id IS NULL OR ae.data_proxima_revisao <= NOW()
+        // OR ae.erros_recorrentes >= 3)
+        // """);
+        // }
+        // sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
 
-        return query.query(this::mapearQuestaoCompleta).list();
+        // var query = jdbc.sql(sql.toString())
+        // .param("sessionId", sessionId)
+        // .param("limite", limite);
+
+        // if (assunto != null && !assunto.isBlank()) {
+        // query = query.param("assunto", "%" + assunto + "%");
+        // }
+
+        // return query.query(this::mapearQuestaoCompleta).list();
     }
 
     public List<String> listarAssuntos() {
@@ -263,5 +266,78 @@ public class QuestaoRepository {
             return List.of();
         String[] arr = (String[]) array.getArray();
         return Arrays.asList(arr);
+    }
+
+    public List<String> listarTopicos(String assunto) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT DISTINCT topico FROM questoes WHERE ativa = TRUE AND topico IS NOT NULL");
+        var query = jdbc.sql(
+                assunto != null && !assunto.isBlank()
+                        ? sql.append(" AND assunto ILIKE :assunto").toString()
+                        : sql.toString());
+        if (assunto != null && !assunto.isBlank())
+            query = query.param("assunto", "%" + assunto + "%");
+        return query.query(String.class).list();
+    }
+
+    public List<QuestaoCompleta> buscarParaEstudo(String sessionId,
+            String assunto,
+            String topico,
+            int limite,
+            boolean apenasVencidas,
+            boolean apenasNaoRespondidas) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
+                    q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
+                    q.referencia_legal,
+                    COALESCE(ae.tentativas, 0)          AS tentativas,
+                    COALESCE(ae.erros_recorrentes, 0)   AS erros_recorrentes,
+                    COALESCE(ae.grau_certeza, 0)         AS grau_certeza,
+                    ae.mnemonico_pessoal,
+                    ae.data_proxima_revisao,
+                    COALESCE(ae.streak_acertos, 0)       AS streak_acertos,
+                    CASE
+                        WHEN ae.id IS NULL THEN 1000.0
+                        WHEN ae.data_proxima_revisao <= NOW() THEN
+                            500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
+                        ELSE
+                            EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
+                    END AS score_prioridade
+                FROM questoes q
+                LEFT JOIN analise_estudo ae
+                    ON ae.questao_id = q.id AND ae.session_id = :sessionId
+                WHERE q.ativa = TRUE
+                """);
+
+        if (assunto != null && !assunto.isBlank())
+            sql.append(" AND q.assunto ILIKE :assunto");
+
+        if (topico != null && !topico.isBlank())
+            sql.append(" AND q.topico ILIKE :topico");
+
+        if (apenasVencidas)
+            sql.append("""
+                    AND (ae.id IS NULL
+                         OR ae.data_proxima_revisao <= NOW()
+                         OR ae.erros_recorrentes >= 3)
+                    """);
+
+        // Não respondidas = nunca tiveram tentativa nesta sessão
+        if (apenasNaoRespondidas)
+            sql.append(" AND (ae.id IS NULL OR ae.tentativas = 0)");
+
+        sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
+
+        var query = jdbc.sql(sql.toString())
+                .param("sessionId", sessionId)
+                .param("limite", limite);
+
+        if (assunto != null && !assunto.isBlank())
+            query = query.param("assunto", "%" + assunto + "%");
+        if (topico != null && !topico.isBlank())
+            query = query.param("topico", "%" + topico + "%");
+
+        return query.query(this::mapearQuestaoCompleta).list();
     }
 }
