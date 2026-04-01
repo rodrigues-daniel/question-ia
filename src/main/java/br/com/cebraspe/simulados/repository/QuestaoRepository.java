@@ -20,10 +20,9 @@ public class QuestaoRepository {
         this.jdbc = jdbc;
     }
 
-    public UUID inserir(QuestaoInput input) {
+    public UUID inserir(QuestaoInput input, boolean geradaPorIa) {
         UUID id = UUID.randomUUID();
 
-        // Extrai dados do bloco analise_estudo
         String mnemonicoInicial = null;
         int errosIniciais = 0;
         int grauInicial = 0;
@@ -35,36 +34,38 @@ public class QuestaoRepository {
             grauInicial = ae.meuGrauCerteza() != null ? ae.meuGrauCerteza() : 0;
         }
 
-        // 1. Insere a questão principal
         jdbc.sql("""
                 INSERT INTO questoes (
-                    id, enunciado, gabarito, assunto, banca, ano, cargo,
+                    id, enunciado, gabarito, assunto, topico, banca, ano, cargo,
                     pegadinha, tipo_pegadinha, palavras_alerta,
-                    detalhe_pegadinha, referencia_legal
+                    detalhe_pegadinha, referencia_legal,
+                    comentario_professor, gerada_por_ia
                 ) VALUES (
-                    :id, :enunciado, :gabarito, :assunto, :banca, :ano, :cargo,
+                    :id, :enunciado, :gabarito, :assunto, :topico, :banca, :ano, :cargo,
                     :pegadinha, :tipoPegadinha, :palavrasAlerta::text[],
-                    :detalhePegadinha, :referenciaLegal
+                    :detalhePegadinha, :referenciaLegal,
+                    :comentarioProfessor, :geradaPorIa
                 )
                 """)
                 .param("id", id)
                 .param("enunciado", input.enunciado())
-                .param("gabarito", input.gabaritoBoolean()) // Boolean limpo
+                .param("gabarito", input.gabaritoBoolean())
                 .param("assunto", input.assunto())
+                .param("topico", input.topico())
                 .param("banca", input.banca())
                 .param("ano", input.ano())
                 .param("cargo", input.cargo())
-                .param("pegadinha", input.pegadinha()) // String | null
+                .param("pegadinha", input.pegadinha())
                 .param("tipoPegadinha", input.tipoPegadinha())
                 .param("palavrasAlerta", converterParaArray(input.palavrasAlerta()))
                 .param("detalhePegadinha", input.detalhePegadinha())
                 .param("referenciaLegal", input.referenciaLegal())
+                .param("comentarioProfessor", input.comentarioProfessor())
+                .param("geradaPorIa", geradaPorIa)
                 .update();
 
-        // 2. Pré-popula analise_estudo se o payload trouxer dados
         if (input.analiseEstudo() != null
                 && (mnemonicoInicial != null || errosIniciais > 0 || grauInicial > 0)) {
-
             jdbc.sql("""
                     INSERT INTO analise_estudo (
                         id, questao_id, session_id,
@@ -89,6 +90,11 @@ public class QuestaoRepository {
         }
 
         return id;
+    }
+
+    // Sobrecarga para compatibilidade (ingestão manual = não é IA)
+    public UUID inserir(QuestaoInput input) {
+        return inserir(input, false);
     }
 
     public Optional<Questao> buscarPorId(UUID id) {
