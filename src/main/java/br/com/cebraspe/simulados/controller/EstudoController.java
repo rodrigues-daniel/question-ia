@@ -25,10 +25,21 @@ public class EstudoController {
     public ResponseEntity<List<QuestaoCompleta>> buscarQuestoes(
             @RequestParam(defaultValue = "default") String sessionId,
             @RequestParam(required = false) String assunto,
+            @RequestParam(required = false) String topico,
             @RequestParam(defaultValue = "10") int limite,
-            @RequestParam(defaultValue = "false") boolean apenasVencidas) {
+            @RequestParam(defaultValue = "false") boolean apenasVencidas,
+            @RequestParam(defaultValue = "false") boolean apenasNaoRespondidas) {
+
         return ResponseEntity.ok(
-                estudoService.buscarQuestoes(sessionId, assunto, limite, apenasVencidas));
+                estudoService.buscarQuestoes(
+                        sessionId, assunto, topico, limite,
+                        apenasVencidas, apenasNaoRespondidas));
+    }
+
+    @GetMapping("/topicos")
+    public ResponseEntity<List<String>> listarTopicos(
+            @RequestParam(required = false) String assunto) {
+        return ResponseEntity.ok(estudoService.listarTopicos(assunto));
     }
 
     @PostMapping("/responder")
