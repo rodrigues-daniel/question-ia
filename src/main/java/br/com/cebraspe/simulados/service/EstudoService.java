@@ -121,4 +121,19 @@ public class EstudoService {
             return "❌ Errado. Revise as palavras-chave destacadas.";
         }
     }
+
+    public List<String> listarTopicos(String assunto) {
+        return questaoRepo.listarTopicos(assunto);
+    }
+
+    public List<QuestaoCompleta> buscarQuestoes(String sessionId,
+            String assunto,
+            String topico,
+            int limite,
+            boolean apenasVencidas,
+            boolean apenasNaoRespondidas) {
+        return questaoRepo.buscarParaEstudo(
+                sessionId, assunto, topico, limite,
+                apenasVencidas, apenasNaoRespondidas);
+    }
 }

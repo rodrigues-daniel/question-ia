@@ -28,21 +28,29 @@ public class QuestaoService {
         List<UUID> ids = new ArrayList<>();
         List<String> erros = new ArrayList<>();
 
+        // Detecta se o lote veio da IA interna
+        boolean geradaPorIa = false;
+        if (request.simuladoConfig() instanceof Map<?, ?> cfg) {
+            Object flag = cfg.get("geradaPorIa");
+            if (flag == null)
+                flag = cfg.get("ia_interna");
+            geradaPorIa = Boolean.TRUE.equals(flag);
+        }
+
         for (QuestaoInput input : request.questoes()) {
             try {
-                UUID id = questaoRepo.inserir(input);
+                UUID id = questaoRepo.inserir(input, geradaPorIa);
                 ids.add(id);
-                log.info("Questão inserida: id={}, assunto={}", id, input.assunto());
+                log.info("Questão inserida: id={}, assunto={}, ia={}",
+                        id, input.assunto(), geradaPorIa);
             } catch (Exception e) {
                 log.error("Erro ao inserir questão: {}", e.getMessage());
-                erros.add("Erro em '" + input.enunciado().substring(0,
-                        Math.min(50, input.enunciado().length())) + "...': " + e.getMessage());
+                erros.add("Erro em '"
+                        + input.enunciado().substring(0, Math.min(50, input.enunciado().length()))
+                        + "...': " + e.getMessage());
             }
         }
 
-        return Map.of(
-                "inseridas", ids.size(),
-                "ids", ids,
-                "erros", erros);
+        return Map.of("inseridas", ids.size(), "ids", ids, "erros", erros);
     }
 }

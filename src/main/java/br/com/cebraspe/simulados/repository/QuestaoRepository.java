@@ -20,10 +20,9 @@ public class QuestaoRepository {
         this.jdbc = jdbc;
     }
 
-    public UUID inserir(QuestaoInput input) {
+    public UUID inserir(QuestaoInput input, boolean geradaPorIa) {
         UUID id = UUID.randomUUID();
 
-        // Extrai dados do bloco analise_estudo
         String mnemonicoInicial = null;
         int errosIniciais = 0;
         int grauInicial = 0;
@@ -35,36 +34,38 @@ public class QuestaoRepository {
             grauInicial = ae.meuGrauCerteza() != null ? ae.meuGrauCerteza() : 0;
         }
 
-        // 1. Insere a questão principal
         jdbc.sql("""
                 INSERT INTO questoes (
-                    id, enunciado, gabarito, assunto, banca, ano, cargo,
+                    id, enunciado, gabarito, assunto, topico, banca, ano, cargo,
                     pegadinha, tipo_pegadinha, palavras_alerta,
-                    detalhe_pegadinha, referencia_legal
+                    detalhe_pegadinha, referencia_legal,
+                    comentario_professor, gerada_por_ia
                 ) VALUES (
-                    :id, :enunciado, :gabarito, :assunto, :banca, :ano, :cargo,
+                    :id, :enunciado, :gabarito, :assunto, :topico, :banca, :ano, :cargo,
                     :pegadinha, :tipoPegadinha, :palavrasAlerta::text[],
-                    :detalhePegadinha, :referenciaLegal
+                    :detalhePegadinha, :referenciaLegal,
+                    :comentarioProfessor, :geradaPorIa
                 )
                 """)
                 .param("id", id)
                 .param("enunciado", input.enunciado())
-                .param("gabarito", input.gabaritoBoolean()) // Boolean limpo
+                .param("gabarito", input.gabaritoBoolean())
                 .param("assunto", input.assunto())
+                .param("topico", input.topico())
                 .param("banca", input.banca())
                 .param("ano", input.ano())
                 .param("cargo", input.cargo())
-                .param("pegadinha", input.pegadinha()) // String | null
+                .param("pegadinha", input.pegadinha())
                 .param("tipoPegadinha", input.tipoPegadinha())
                 .param("palavrasAlerta", converterParaArray(input.palavrasAlerta()))
                 .param("detalhePegadinha", input.detalhePegadinha())
                 .param("referenciaLegal", input.referenciaLegal())
+                .param("comentarioProfessor", input.comentarioProfessor())
+                .param("geradaPorIa", geradaPorIa)
                 .update();
 
-        // 2. Pré-popula analise_estudo se o payload trouxer dados
         if (input.analiseEstudo() != null
                 && (mnemonicoInicial != null || errosIniciais > 0 || grauInicial > 0)) {
-
             jdbc.sql("""
                     INSERT INTO analise_estudo (
                         id, questao_id, session_id,
@@ -91,6 +92,11 @@ public class QuestaoRepository {
         return id;
     }
 
+    // Sobrecarga para compatibilidade (ingestão manual = não é IA)
+    public UUID inserir(QuestaoInput input) {
+        return inserir(input, false);
+    }
+
     public Optional<Questao> buscarPorId(UUID id) {
         return jdbc.sql("SELECT * FROM questoes WHERE id = :id AND ativa = TRUE")
                 .param("id", id)
@@ -100,50 +106,53 @@ public class QuestaoRepository {
 
     public List<QuestaoCompleta> buscarParaEstudo(String sessionId, String assunto,
             int limite, boolean apenasVencidas) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
-                    q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
-                    q.referencia_legal,
-                    COALESCE(ae.tentativas, 0) AS tentativas,
-                    COALESCE(ae.erros_recorrentes, 0) AS erros_recorrentes,
-                    COALESCE(ae.grau_certeza, 0) AS grau_certeza,
-                    ae.mnemonico_pessoal,
-                    ae.data_proxima_revisao,
-                    COALESCE(ae.streak_acertos, 0) AS streak_acertos,
-                    CASE
-                        WHEN ae.id IS NULL THEN 1000.0
-                        WHEN ae.data_proxima_revisao <= NOW() THEN
-                            500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
-                        ELSE
-                            EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
-                    END AS score_prioridade
-                FROM questoes q
-                LEFT JOIN analise_estudo ae
-                    ON ae.questao_id = q.id AND ae.session_id = :sessionId
-                WHERE q.ativa = TRUE
-                """);
 
-        if (assunto != null && !assunto.isBlank()) {
-            sql.append(" AND q.assunto ILIKE :assunto ");
-        }
-        if (apenasVencidas) {
-            sql.append("""
-                    AND (ae.id IS NULL OR ae.data_proxima_revisao <= NOW()
-                         OR ae.erros_recorrentes >= 3)
-                    """);
-        }
-        sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
+        return buscarParaEstudo(sessionId, assunto, null, limite, apenasVencidas, false);
 
-        var query = jdbc.sql(sql.toString())
-                .param("sessionId", sessionId)
-                .param("limite", limite);
+        // StringBuilder sql = new StringBuilder("""
+        // SELECT
+        // q.id, q.enunciado, q.assunto, q.gabarito, q.pegadinha,
+        // q.tipo_pegadinha, q.palavras_alerta, q.detalhe_pegadinha,
+        // q.referencia_legal,
+        // COALESCE(ae.tentativas, 0) AS tentativas,
+        // COALESCE(ae.erros_recorrentes, 0) AS erros_recorrentes,
+        // COALESCE(ae.grau_certeza, 0) AS grau_certeza,
+        // ae.mnemonico_pessoal,
+        // ae.data_proxima_revisao,
+        // COALESCE(ae.streak_acertos, 0) AS streak_acertos,
+        // CASE
+        // WHEN ae.id IS NULL THEN 1000.0
+        // WHEN ae.data_proxima_revisao <= NOW() THEN
+        // 500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
+        // ELSE
+        // EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
+        // END AS score_prioridade
+        // FROM questoes q
+        // LEFT JOIN analise_estudo ae
+        // ON ae.questao_id = q.id AND ae.session_id = :sessionId
+        // WHERE q.ativa = TRUE
+        // """);
 
-        if (assunto != null && !assunto.isBlank()) {
-            query = query.param("assunto", "%" + assunto + "%");
-        }
+        // if (assunto != null && !assunto.isBlank()) {
+        // sql.append(" AND q.assunto ILIKE :assunto ");
+        // }
+        // if (apenasVencidas) {
+        // sql.append("""
+        // AND (ae.id IS NULL OR ae.data_proxima_revisao <= NOW()
+        // OR ae.erros_recorrentes >= 3)
+        // """);
+        // }
+        // sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
 
-        return query.query(this::mapearQuestaoCompleta).list();
+        // var query = jdbc.sql(sql.toString())
+        // .param("sessionId", sessionId)
+        // .param("limite", limite);
+
+        // if (assunto != null && !assunto.isBlank()) {
+        // query = query.param("assunto", "%" + assunto + "%");
+        // }
+
+        // return query.query(this::mapearQuestaoCompleta).list();
     }
 
     public List<String> listarAssuntos() {
@@ -231,16 +240,19 @@ public class QuestaoRepository {
                 rs.getObject("atualizado_em", java.time.OffsetDateTime.class));
     }
 
-    private QuestaoCompleta mapearQuestaoCompleta(java.sql.ResultSet rs, int row) throws SQLException {
+    private QuestaoCompleta mapearQuestaoCompleta(java.sql.ResultSet rs, int row)
+            throws SQLException {
         return new QuestaoCompleta(
                 UUID.fromString(rs.getString("id")),
                 rs.getString("enunciado"),
                 rs.getString("assunto"),
+                rs.getString("topico"),
                 rs.getBoolean("gabarito"),
                 rs.getString("pegadinha"),
                 rs.getString("tipo_pegadinha"),
                 converterDeArray(rs.getArray("palavras_alerta")),
                 rs.getString("detalhe_pegadinha"),
+                rs.getString("comentario_professor"), // ← NOVO
                 rs.getString("referencia_legal"),
                 rs.getInt("tentativas"),
                 rs.getInt("erros_recorrentes"),
@@ -248,7 +260,9 @@ public class QuestaoRepository {
                 rs.getString("mnemonico_pessoal"),
                 rs.getObject("data_proxima_revisao", java.time.OffsetDateTime.class),
                 rs.getInt("streak_acertos"),
-                rs.getDouble("score_prioridade"));
+                rs.getDouble("score_prioridade"),
+                rs.getBoolean("gerada_por_ia") // ← NOVO
+        );
     }
 
     private String converterParaArray(List<String> lista) {
@@ -263,5 +277,81 @@ public class QuestaoRepository {
             return List.of();
         String[] arr = (String[]) array.getArray();
         return Arrays.asList(arr);
+    }
+
+    public List<String> listarTopicos(String assunto) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT DISTINCT topico FROM questoes WHERE ativa = TRUE AND topico IS NOT NULL");
+        var query = jdbc.sql(
+                assunto != null && !assunto.isBlank()
+                        ? sql.append(" AND assunto ILIKE :assunto").toString()
+                        : sql.toString());
+        if (assunto != null && !assunto.isBlank())
+            query = query.param("assunto", "%" + assunto + "%");
+        return query.query(String.class).list();
+    }
+
+    public List<QuestaoCompleta> buscarParaEstudo(String sessionId,
+            String assunto,
+            String topico,
+            int limite,
+            boolean apenasVencidas,
+            boolean apenasNaoRespondidas) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    q.id, q.enunciado, q.assunto, q.topico, q.gabarito,
+                    q.pegadinha, q.tipo_pegadinha, q.palavras_alerta,
+                    q.detalhe_pegadinha,
+                    q.comentario_professor,
+                    q.referencia_legal,
+                    q.gerada_por_ia,
+                    COALESCE(ae.tentativas, 0)          AS tentativas,
+                    COALESCE(ae.erros_recorrentes, 0)   AS erros_recorrentes,
+                    COALESCE(ae.grau_certeza, 0)         AS grau_certeza,
+                    ae.mnemonico_pessoal,
+                    ae.data_proxima_revisao,
+                    COALESCE(ae.streak_acertos, 0)       AS streak_acertos,
+                    CASE
+                        WHEN ae.id IS NULL THEN 1000.0
+                        WHEN ae.data_proxima_revisao <= NOW() THEN
+                            500.0 + (COALESCE(ae.erros_recorrentes, 0) * 100.0)
+                        ELSE
+                            EXTRACT(EPOCH FROM (ae.data_proxima_revisao - NOW())) / 3600.0 * -1
+                    END AS score_prioridade
+                FROM questoes q
+                LEFT JOIN analise_estudo ae
+                    ON ae.questao_id = q.id AND ae.session_id = :sessionId
+                WHERE q.ativa = TRUE
+                                """);
+
+        if (assunto != null && !assunto.isBlank())
+            sql.append(" AND q.assunto ILIKE :assunto");
+
+        if (topico != null && !topico.isBlank())
+            sql.append(" AND q.topico ILIKE :topico");
+
+        if (apenasVencidas)
+            sql.append("""
+                    AND (ae.id IS NULL
+                         OR ae.data_proxima_revisao <= NOW()
+                         OR ae.erros_recorrentes >= 3)
+                    """);
+
+        // Não respondidas = nunca tiveram tentativa nesta sessão
+        if (apenasNaoRespondidas)
+            sql.append(" AND (ae.id IS NULL OR ae.tentativas = 0)");
+
+        sql.append(" ORDER BY score_prioridade DESC LIMIT :limite");
+
+        var query = jdbc.sql(sql.toString())
+                .param("sessionId", sessionId)
+                .param("limite", limite);
+
+        if (assunto != null && !assunto.isBlank())
+            query = query.param("assunto", "%" + assunto + "%");
+        if (topico != null && !topico.isBlank())
+            query = query.param("topico", "%" + topico + "%");
+
+        return query.query(this::mapearQuestaoCompleta).list();
     }
 }
